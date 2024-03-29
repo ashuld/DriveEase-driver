@@ -9,6 +9,9 @@ class DriverRegistrationProvider extends ChangeNotifier {
   DriverDetails? get user => _user;
 
   void updateDriverInfo({required DriverDetails driverdata}) {
+    log(driverdata.fullName);
+    log(driverdata.phoneNumber);
+    log(driverdata.isVerified.toString());
     _user = DriverDetails(
         fullName: driverdata.fullName,
         phoneNumber: driverdata.phoneNumber,

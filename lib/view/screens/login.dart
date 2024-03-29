@@ -144,7 +144,7 @@ class ScreenLogin extends StatelessWidget {
           InkWell(
             onTap: () {
               Navigator.pushReplacement(
-                  context, CustomPageTransition(page: const ScreenRegister()));
+                  context, CustomPageTransition(page: ScreenRegister()));
             },
             child: Text(" Sign Up",
                 style: textStyle(

@@ -30,7 +30,7 @@ Future loadingDialog(context) {
     barrierDismissible: false,
     builder: (BuildContext context) {
       return AlertDialog(
-        backgroundColor: Color(0xff064170),
+        backgroundColor: const Color(0xff064170),
         content: LottieBuilder.asset('assets/lottie/loading_1.json'),
       );
     },

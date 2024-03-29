@@ -4,8 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:responsive_sizer/responsive_sizer.dart';
 
-SizedBox networkError() {
-  return SizedBox(
+Container networkError() {
+  return Container(
+    decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
     child: Column(
       children: [
         LottieBuilder.asset(height: 50.h, 'assets/lottie/network_lottie.json'),

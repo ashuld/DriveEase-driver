@@ -11,12 +11,11 @@ import 'package:responsive_sizer/responsive_sizer.dart';
 import '../providers/connectivity_provider.dart';
 
 class ScreenRegister extends StatelessWidget {
-  const ScreenRegister({super.key});
-
+  ScreenRegister({super.key});
+  final TextEditingController phoneController = TextEditingController();
+  final TextEditingController nameController = TextEditingController();
   @override
   Widget build(BuildContext context) {
-    final TextEditingController phoneController = TextEditingController();
-    final TextEditingController nameController = TextEditingController();
     return Scaffold(
       body: Container(
           height: 100.h,
@@ -44,68 +43,69 @@ class ScreenRegister extends StatelessWidget {
     );
   }
 
-  Row signUpButton(TextEditingController nameController,
+  Consumer signUpButton(TextEditingController nameController,
       TextEditingController phoneController, BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        InkWell(
-          onTap: () async {
-            String name = nameController.text.trim();
-            String phone = phoneController.text.trim();
-            if (name.isEmpty || phone.isEmpty) {
-              showSnackBar(
-                  context: context, message: 'Please Fill All the Fields');
-              return;
-            }
-            if (phoneController.text.length != 10) {
-              showSnackBar(
-                  context: context,
-                  message: 'Please Enter a Valid Phone Number');
-              return;
-            }
-            final auth = Provider.of<AuthProvider>(context, listen: false);
-            final connectivity =
-                Provider.of<ConnectivityProvider>(context, listen: false);
-            if (!connectivity.isDeviceConnected) {
-              networkDialog(context);
-            } else {
-              phone = '+91$phone';
-              await auth.verifyPhoneNumber(
-                  context: context, phoneNumber: phone, name: name);
-            }
-          },
-          child: Container(
-            width: 55.w,
-            height: 6.2.h,
-            decoration: BoxDecoration(
-              color: AppColors.buttonColor, // Greyish color
-              borderRadius: BorderRadius.circular(12), // Rounded corners
-              boxShadow: const [
-                BoxShadow(
-                  color: AppColors.buttonSpreadColor, // Shadow color
-                  offset: Offset(0, 4), // Offset in X and Y direction
-                  blurRadius: 4, // Spread of the shadow
-                  spreadRadius: 0.5, // Size of the shadow
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  'Sign Up',
-                  style: textStyle(
-                      size: 25,
-                      color: Colors.white,
-                      thickness: FontWeight.bold),
-                ),
-              ],
+    return Consumer<ConnectivityProvider>(
+        builder: (context, connectivity, child) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          InkWell(
+            onTap: () async {
+              String name = nameController.text.trim();
+              String phone = phoneController.text.trim();
+              if (name.isEmpty || phone.isEmpty) {
+                showSnackBar(
+                    context: context, message: 'Please Fill All the Fields');
+                return;
+              }
+              if (phoneController.text.length != 10) {
+                showSnackBar(
+                    context: context,
+                    message: 'Please Enter a Valid Phone Number');
+                return;
+              }
+              final auth = Provider.of<AuthProvider>(context, listen: false);
+              if (!connectivity.isDeviceConnected) {
+                networkDialog(context);
+              } else {
+                phone = '+91$phone';
+                await auth.verifyPhoneNumber(
+                    context: context, phoneNumber: phone, name: name);
+              }
+            },
+            child: Container(
+              width: 55.w,
+              height: 6.2.h,
+              decoration: BoxDecoration(
+                color: AppColors.buttonColor, // Greyish color
+                borderRadius: BorderRadius.circular(12), // Rounded corners
+                boxShadow: const [
+                  BoxShadow(
+                    color: AppColors.buttonSpreadColor, // Shadow color
+                    offset: Offset(0, 4), // Offset in X and Y direction
+                    blurRadius: 4, // Spread of the shadow
+                    spreadRadius: 0.5, // Size of the shadow
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Sign Up',
+                    style: textStyle(
+                        size: 25,
+                        color: Colors.white,
+                        thickness: FontWeight.bold),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      ],
-    );
+        ],
+      );
+    });
   }
 
   Padding numberField(TextEditingController phoneController) {

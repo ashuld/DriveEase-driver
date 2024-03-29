@@ -1,6 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'dart:developer';
+import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:drive_ease_driver/model/driver_model.dart';
@@ -12,7 +13,9 @@ import 'package:drive_ease_driver/view/screens/verification_status.dart';
 import 'package:drive_ease_driver/view/widgets/widgets.dart';
 import 'package:drive_ease_driver/viewmodel/driver_provider.dart';
 import 'package:drive_ease_driver/viewmodel/page_transition.dart';
+import 'package:drive_ease_driver/viewmodel/verification_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,6 +26,7 @@ class AuthProvider extends ChangeNotifier {
 
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseStorage _storage = FirebaseStorage.instance;
 
   String? get uid => _uid;
   String? get verificationId => _verificationId;
@@ -111,7 +115,7 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> getCurrentAdminId() async {
+  Future<void> getCurrentUserId() async {
     final user = _auth.currentUser;
     if (user != null) {
       final userDoc =
@@ -212,23 +216,20 @@ class AuthProvider extends ChangeNotifier {
       if (user != null) {
         log('otp verification successfull');
         _uid = user.uid;
-        notifyListeners();
         //After Successful login
         DocumentSnapshot userDataSnapshot = await FirebaseFirestore.instance
             .collection('drivers')
-            .doc("kVokZGrvHLd5v9WTkH5M4t3V9XR2")
+            .doc(_uid)
             .get();
         log('enterred here1');
         log(userDataSnapshot.data().toString());
         if (userDataSnapshot.exists) {
           final driverProvider =
               Provider.of<DriverRegistrationProvider>(context, listen: false);
-
           DriverDetails driverData =
               await extractDriverDetails(userDataSnapshot);
           driverProvider.updateDriverInfo(driverdata: driverData);
           final SharedPreferences prefs = await SharedPreferences.getInstance();
-
           prefs.setBool('isSigned', true);
           if (driverProvider.user?.isDocumentSubmitted == true) {
             if (driverProvider.user?.isVerifiedBannerShown == true) {
@@ -251,7 +252,7 @@ class AuthProvider extends ChangeNotifier {
             Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const ScreenDriverKycAdd(),
+                  builder: (context) => ScreenDriverKycAdd(),
                 ));
           }
         } else {
@@ -334,7 +335,7 @@ class AuthProvider extends ChangeNotifier {
       Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => const ScreenDriverKycAdd(),
+            builder: (context) => ScreenDriverKycAdd(),
           ));
       // Driver information saved to Firestore successfully.
     } catch (e) {
@@ -358,7 +359,6 @@ class AuthProvider extends ChangeNotifier {
     var isDocumentSubmitted = (userDataSnapShot.data()
             as Map<String, dynamic>)['isDocumentSubmitted'] ??
         false;
-    var kycData = userDataSnapShot['kycData'] ?? {};
     var userid =
         (userDataSnapShot.data() as Map<String, dynamic>)['userid'] ?? '';
     var phoneNumber =
@@ -377,15 +377,13 @@ class AuthProvider extends ChangeNotifier {
         phoneNumber: phoneNumber,
         isDocumentSubmitted: isDocumentSubmitted,
         isVerified: isVerified,
-        kycData: kycData,
         isBlocked: isBlocked);
   }
 
   fetchDatafromFirestore(BuildContext context) async {
     try {
-      final auth = Provider.of<AuthProvider>(context, listen: false);
-      auth.getCurrentAdminId();
-      final userid = auth.uid;
+      getCurrentUserId();
+      final userid = _uid;
       final snapshot = await _firestore.collection('drivers').doc(userid).get();
       if (snapshot.exists) {
         final data = snapshot.data();
@@ -405,23 +403,120 @@ class AuthProvider extends ChangeNotifier {
           driverProvider.updateDriverInfo(driverdata: driverDetails);
           notifyListeners();
           log('${driverDetails.fullName},${driverDetails.phoneNumber},${driverDetails.isDocumentSubmitted},${driverDetails.isVerified},${driverDetails.isVerifiedBannerShown},${driverDetails.isBlocked}');
-          if (driverProvider.user?.isDocumentSubmitted == true) {
-            if (driverProvider.user?.isVerifiedBannerShown == true) {
-              return const ScreenHome();
-            } else {
-              return const ScreenVerificationStatus();
-            }
-          } else {
-            return const ScreenDriverKycAdd();
-          }
         }
-      } else {
-        showSnackBar(
-            context: context,
-            message: 'Something Happened! Please Try Again After few Minutes');
       }
     } catch (e) {
       log('Error fetching and storing driver data: $e');
+    }
+  }
+
+  //uploading driver doccuments
+  Future<void> uploadDriverDetails(
+      {required BuildContext context, required String driverLicense}) async {
+    loadingDialog(context);
+    try {
+      final verify = Provider.of<VerificationProvider>(context, listen: false);
+      final userdata =
+          Provider.of<DriverRegistrationProvider>(context, listen: false);
+      log('uploading to storage');
+      await fetchDatafromFirestore(context);
+      log(userdata.user!.userid!);
+      String driverImage = await uploadImageToStorage(
+          userId: userdata.user!.userid!,
+          fileName: verify.driverImage8!,
+          fileType: 'image',
+          context: context);
+      log(userdata.user!.userid!);
+      String licenseFront = await uploadImageToStorage(
+          userId: userdata.user!.userid!,
+          fileName: verify.licenseFrontImage8!,
+          fileType: 'licenseFront',
+          context: context);
+      log(userdata.user!.userid!);
+      String licenseBack = await uploadImageToStorage(
+          userId: userdata.user!.userid!,
+          fileName: verify.licenseBackImage8!,
+          fileType: 'licenseBack',
+          context: context);
+      log('uploading completed');
+      log('creating new field kycdata in drivers collection');
+      //Creating a map to store doccumentUrls
+      Map<String, dynamic> kycData = {
+        'driverImage': driverImage,
+        'license': driverLicense,
+        'licenseFront': licenseFront,
+        'licenseBack': licenseBack
+      };
+
+      //Getting Reference to the users doocument
+      DocumentReference driverDocRef =
+          _firestore.collection('drivers').doc(userdata.user!.userid!);
+
+      //creating new field
+      await driverDocRef.set({'kycData': kycData}, SetOptions(merge: true));
+      log('kycData field created');
+
+      //Updating Doccument submitted to true
+      await driverDocRef
+          .update({'isDocumentSubmitted': true, 'isVerified': false});
+
+      Navigator.pop(context);
+      Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ScreenVerificationStatus(),
+          ));
+    } catch (e) {
+      log(e.toString());
+      Navigator.pop(context);
+      showSnackBar(
+          context: context,
+          message: 'Something Happened! Please Try Again After few Minutes ');
+    }
+  }
+
+  //uploading image to storage
+  Future<String> uploadImageToStorage(
+      {required BuildContext context,
+      required String userId,
+      required Uint8List fileName,
+      required String fileType}) async {
+    String folderName = "kycData/$userId";
+    String pathName =
+        "$folderName/${DateTime.now().millisecondsSinceEpoch.toString()}.$fileType";
+
+    Reference ref = _storage.ref().child(pathName);
+    UploadTask task = ref.putData(fileName);
+    TaskSnapshot snap = await task;
+
+    String downloadUrl = await snap.ref.getDownloadURL();
+    return downloadUrl;
+  }
+
+  //Change banner status
+  Future<void> changeBannerStatus(BuildContext context) async {
+    loadingDialog(context);
+    try {
+      //changing banner status in firstore
+      await _firestore
+          .collection('drivers')
+          .doc(_uid)
+          .update({'isVerifiedBannerShown': true});
+      final SharedPreferences prefs = await SharedPreferences.getInstance();
+      prefs.setBool('isLoggedIn', false);
+      Navigator.pop(context);
+      Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const ScreenLogin(),
+          ),
+          (route) => false);
+    } catch (e) {
+      Navigator.pop(context);
+      showSnackBar(
+          context: context,
+          message: 'Something Happened! Please Try Again After few Minutes');
+      log('Error saving driver information: ${e.toString()}');
     }
   }
 }

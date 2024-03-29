@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:drive_ease_driver/view/core/colors.dart';
+import 'package:drive_ease_driver/view/providers/auth_provider.dart';
 import 'package:drive_ease_driver/view/widgets/widgets.dart';
 import 'package:drive_ease_driver/viewmodel/verification_provider.dart';
 import 'package:flutter/material.dart';
@@ -8,12 +9,11 @@ import 'package:provider/provider.dart';
 import 'package:responsive_sizer/responsive_sizer.dart';
 
 class ScreenDriverKycAdd extends StatelessWidget {
-  const ScreenDriverKycAdd({super.key});
-
+  ScreenDriverKycAdd({super.key});
+  final TextEditingController licenseController = TextEditingController();
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<VerificationProvider>(context);
-    TextEditingController licenseController = TextEditingController();
     return Scaffold(
       body: Container(
           height: 100.h,
@@ -156,7 +156,7 @@ class ScreenDriverKycAdd extends StatelessWidget {
                       borderRadius: BorderRadius.circular(50),
                       child: Image.file(
                         File(provider.driverimage!),
-                        fit: BoxFit.cover,
+                        fit: BoxFit.fill,
                       )),
             )),
         CircleAvatar(
@@ -178,12 +178,13 @@ class ScreenDriverKycAdd extends StatelessWidget {
     return SizedBox(
       height: 57,
       child: TextFormField(
+        style: TextStyle(color: AppColors.textColor),
         controller: licenseController,
         decoration: InputDecoration(
           hintText: 'Enter Your License No.',
           fillColor: AppColors.formFieldFilled,
           filled: true,
-          hintStyle: const TextStyle(color: Colors.yellow),
+          hintStyle: textStyle(color: AppColors.linkColor),
           enabledBorder: OutlineInputBorder(
             borderSide: BorderSide(
                 color: AppColors.formFieldFocusedBorder.withOpacity(0.5)),
@@ -204,20 +205,20 @@ class ScreenDriverKycAdd extends StatelessWidget {
       onTap: () {
         final license = controller.text.trim();
         if (license.isEmpty) {
-          // showSnackbar(context: context, message: 'Enter your LIcense no');
-          // return;
+          showSnackBar(context: context, message: 'Enter your LIcense no');
+          return;
         }
         if (provider.frontImagePath == null || provider.backImagePath == null) {
-          // showSnackbar(
-          //     context: context, message: 'Please Submit to license image');
+          showSnackBar(
+              context: context, message: 'Please Submit your license image');
           return;
         }
         if (provider.driverimage == null) {
-          // showSnackbar(context: context, message: 'Please Upload your image');
+          showSnackBar(context: context, message: 'Please Upload your image');
           return;
         }
-        // Provider.of<AuthProvider>(context, listen: false)
-        //     .uploadDriverDetails(context: context, driverLicense: license);
+        Provider.of<AuthProvider>(context, listen: false)
+            .uploadDriverDetails(context: context, driverLicense: license);
       },
       child: Container(
         width: 70.w,

@@ -39,7 +39,7 @@ class ScreenOnBoarding extends StatelessWidget {
           prefs.setBool('onBoard', true);
           log('set onBoarding status completed');
           Navigator.pushReplacement(
-              context, CustomPageTransition(page: const ScreenRegister()));
+              context, CustomPageTransition(page: ScreenRegister()));
         },
         child: Container(
           width: 50.w,

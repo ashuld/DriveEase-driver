@@ -1,10 +1,11 @@
 import 'package:drive_ease_driver/firebase_options.dart';
+import 'package:drive_ease_driver/view/core/colors.dart';
 import 'package:drive_ease_driver/view/providers/auth_provider.dart';
 import 'package:drive_ease_driver/view/providers/connectivity_provider.dart';
 import 'package:drive_ease_driver/view/providers/utils_provider.dart';
-import 'package:drive_ease_driver/view/screens/login.dart';
 import 'package:drive_ease_driver/view/screens/onboarding.dart';
 import 'package:drive_ease_driver/view/screens/screen_register.dart';
+import 'package:drive_ease_driver/viewmodel/auth_wrapper.dart';
 import 'package:drive_ease_driver/viewmodel/driver_provider.dart';
 import 'package:drive_ease_driver/viewmodel/verification_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -36,54 +37,70 @@ class MyApp extends StatelessWidget {
         (BuildContext context, Orientation orientation, ScreenType screenType) {
       return Consumer<UtilsProvider>(builder: (context, util, child) {
         return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          title: 'DriveEase-driver',
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-            useMaterial3: true,
-          ),
-          home: FutureBuilder(
-            future: util.checkOnBoardingStatus(),
-            builder: (context, snapshotOnBoard) {
-              if (snapshotOnBoard.connectionState == ConnectionState.waiting) {
-                return const Scaffold(
-                  body: Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                );
-              } else {
-                bool onBoard = snapshotOnBoard.data!;
-                if (!onBoard) {
-                  return const ScreenOnBoarding();
-                } else {
-                  final utils =
-                      Provider.of<UtilsProvider>(context, listen: false);
-                  return FutureBuilder(
-                    future: utils.checkSignInStatus(),
-                    builder: (context, snapshotSignIn) {
-                      if (snapshotSignIn.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Scaffold(
-                          body: Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        );
-                      } else {
-                        bool isSigned = snapshotSignIn.data!;
-                        if (!isSigned) {
-                          return const ScreenRegister();
-                        } else {
-                          return const ScreenLogin();
-                        }
-                      }
-                    },
-                  );
-                }
-              }
-            },
-          ),
-        );
+            debugShowCheckedModeBanner: false,
+            title: 'DriveEase-driver',
+            theme: ThemeData(
+              colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+              useMaterial3: true,
+            ),
+            home: pageNavigation(util));
       });
     });
+  }
+
+  FutureBuilder<bool> pageNavigation(UtilsProvider util) {
+    return FutureBuilder(
+      future: util.checkOnBoardingStatus(),
+      builder: (context, snapshotOnBoard) {
+        if (snapshotOnBoard.connectionState == ConnectionState.waiting) {
+          return Scaffold(
+            body: Container(
+              height: 100.h,
+              width: 100.w,
+              decoration:
+                  const BoxDecoration(gradient: AppColors.primaryGradient),
+              child: Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.textColor,
+                ),
+              ),
+            ),
+          );
+        } else {
+          bool onBoard = snapshotOnBoard.data!;
+          if (!onBoard) {
+            return const ScreenOnBoarding();
+          } else {
+            return FutureBuilder(
+              future: util.checkSignInStatus(),
+              builder: (context, snapshotSignIn) {
+                if (snapshotSignIn.connectionState == ConnectionState.waiting) {
+                  return Scaffold(
+                    body: Container(
+                      height: 100.h,
+                      width: 100.w,
+                      decoration: const BoxDecoration(
+                          gradient: AppColors.primaryGradient),
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.textColor,
+                        ),
+                      ),
+                    ),
+                  );
+                } else {
+                  bool isSigned = snapshotSignIn.data!;
+                  if (!isSigned) {
+                    return ScreenRegister();
+                  } else {
+                    return const AuthWrapper();
+                  }
+                }
+              },
+            );
+          }
+        }
+      },
+    );
   }
 }
