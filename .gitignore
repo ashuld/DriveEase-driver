@@ -44,7 +44,8 @@ app.*.map.json
 /android/app/release
 
 #Folders that need to be ignored
-/android/
+#/android/
 
 #Files that need to be ignored
 /lib/firebase_options.dart
+/android/app/google-services.json

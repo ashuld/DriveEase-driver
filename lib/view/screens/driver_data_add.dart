@@ -8,48 +8,59 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_sizer/responsive_sizer.dart';
 
-class ScreenDriverKycAdd extends StatelessWidget {
-  ScreenDriverKycAdd({super.key});
+class ScreenDriverKycAdd extends StatefulWidget {
+  const ScreenDriverKycAdd({super.key});
+
+  @override
+  State<ScreenDriverKycAdd> createState() => _ScreenDriverKycAddState();
+}
+
+class _ScreenDriverKycAddState extends State<ScreenDriverKycAdd> {
   final TextEditingController licenseController = TextEditingController();
+  final formKey = GlobalKey<FormState>();
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<VerificationProvider>(context);
-    return Scaffold(
-      body: Container(
-          height: 100.h,
-          width: 100.w,
-          decoration: const BoxDecoration(gradient: AppColors.primaryGradient),
-          child: SafeArea(
-              child: SingleChildScrollView(
-            child: SizedBox(
-              child: Container(
-                padding: const EdgeInsets.all(10),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    SizedBox(height: 1.h),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [imgAssigner(provider)],
-                    ),
-                    SizedBox(height: 2.h),
-                    licenseField(licenseController),
-                    SizedBox(height: 2.h),
-                    licenseFront(provider),
-                    SizedBox(height: 2.h),
-                    licenseBack(provider),
-                    SizedBox(height: 2.h),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        submit(context, licenseController, provider),
-                      ],
-                    )
-                  ],
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        body: Container(
+            height: 100.h,
+            width: 100.w,
+            decoration:
+                const BoxDecoration(gradient: AppColors.primaryGradient),
+            child: SafeArea(
+                child: SingleChildScrollView(
+              child: SizedBox(
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    children: [
+                      SizedBox(height: 1.h),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [imgAssigner(provider)],
+                      ),
+                      SizedBox(height: 2.h),
+                      licenseField(licenseController),
+                      SizedBox(height: 2.h),
+                      licenseFront(provider),
+                      SizedBox(height: 2.h),
+                      licenseBack(provider),
+                      SizedBox(height: 2.h),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          submit(context, licenseController, provider),
+                        ],
+                      )
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ))),
+            ))),
+      ),
     );
   }
 

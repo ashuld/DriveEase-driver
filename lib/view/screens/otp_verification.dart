@@ -6,11 +6,12 @@ import 'package:drive_ease_driver/view/widgets/network_error.dart';
 import 'package:drive_ease_driver/view/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+// import 'package:go_router/go_router.dart';
 import 'package:pinput/pinput.dart';
 import 'package:provider/provider.dart';
 import 'package:responsive_sizer/responsive_sizer.dart';
 
-class ScreenOtpVerification extends StatelessWidget {
+class ScreenOtpVerification extends StatefulWidget {
   final String phoneNo;
   final bool isFromRegistration;
   final String? name;
@@ -21,8 +22,14 @@ class ScreenOtpVerification extends StatelessWidget {
       required this.isFromRegistration});
 
   @override
+  State<ScreenOtpVerification> createState() => _ScreenOtpVerificationState();
+}
+
+class _ScreenOtpVerificationState extends State<ScreenOtpVerification> {
+  final TextEditingController otpController = TextEditingController();
+  final formKey = GlobalKey<FormState>();
+  @override
   Widget build(BuildContext context) {
-    final TextEditingController otpController = TextEditingController();
     final defaultPinTheme = PinTheme(
       width: 50,
       height: 52,
@@ -46,114 +53,118 @@ class ScreenOtpVerification extends StatelessWidget {
         color: const Color.fromARGB(179, 226, 224, 224),
       ),
     );
-    return Scaffold(
-      body: Container(
-        height: 100.h,
-        width: 100.w,
-        decoration: const BoxDecoration(
-          gradient: AppColors.primaryGradient,
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              children: [
-                backButton(context),
-                const SizedBox(height: 30),
-                otpHead(),
-                displayMsg(),
-                SizedBox(height: 6.5.h),
-                otpField(otpController, defaultPinTheme, focusedPinTheme,
-                    submittedPinTheme),
-                SizedBox(height: 10.h),
-                InkWell(
-                  onTap: () {
-                    final otp = otpController.text;
-                    if (otp.length != 6) {
-                      showSnackBar(
-                          context: context,
-                          message: 'Please enter a valid OTP');
-                    } else {
-                      final connectivity = Provider.of<ConnectivityProvider>(
-                          context,
-                          listen: false);
-                      final auth =
-                          Provider.of<AuthProvider>(context, listen: false);
-                      if (!connectivity.isDeviceConnected) {
-                        networkDialog(context);
-                      } else {
-                        if (isFromRegistration) {
-                          final driverdata = DriverDetails(
-                              fullName: name!, phoneNumber: phoneNo);
-                          auth.verifyOTPSignIn(
-                              context: context,
-                              otp: otp,
-                              driverdata: driverdata);
-                        } else {
-                          auth.verifyOTPLogIn(context, otp: otp);
-                        }
-                      }
-                    }
-                  },
-                  child: Container(
-                    width: 40.w,
-                    height: 6.2.h,
-                    decoration: BoxDecoration(
-                      color: AppColors.buttonColor, // Greyish color
-                      borderRadius: BorderRadius.circular(8), // Rounded corners
-                      boxShadow: const [
-                        BoxShadow(
-                          color: AppColors.buttonSpreadColor, // Shadow color
-                          offset: Offset(0, 4), // Offset in X and Y direction
-                          blurRadius: 4, // Spread of the shadow
-                          spreadRadius: 0.5, // Size of the shadow
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          'Verify',
-                          style: textStyle(
-                              size: 25,
-                              color: Colors.white,
-                              thickness: FontWeight.bold),
-                        ),
-                      ],
-                    ),
-                  ),
+    return PopScope(
+      canPop: false,
+      child: Scaffold(
+        body: Form(
+          key: formKey,
+          child: Container(
+            height: 100.h,
+            width: 100.w,
+            decoration: const BoxDecoration(
+              gradient: AppColors.primaryGradient,
+            ),
+            child: SafeArea(
+              child: SingleChildScrollView(
+                child: Column(
+                  children: [
+                    // backButton(context),
+                    const SizedBox(height: 30),
+                    otpHead(),
+                    displayMsg(),
+                    SizedBox(height: 6.5.h),
+                    otpField(otpController, defaultPinTheme, focusedPinTheme,
+                        submittedPinTheme),
+                    SizedBox(height: 10.h),
+                    verifyButton(context),
+                    const SizedBox(height: 18),
+                    resendOtp(context)
+                  ],
                 ),
-                const SizedBox(height: 18),
-                Padding(
-                  padding: EdgeInsets.only(left: Adaptive.w(18.8)),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    children: [
-                      Text('Didn’t received code? ',
-                          style: textStyle(
-                            size: 17,
-                            color: AppColors.textColor,
-                          )),
-                      InkWell(
-                        onTap: () {
-                          final auth =
-                              Provider.of<AuthProvider>(context, listen: false);
-                          auth.resendOTP(
-                              phoneNumber: phoneNo, context: context);
-                        },
-                        child: Text('Resend ',
-                            style: textStyle(
-                              size: 17,
-                              color: AppColors.linkColor,
-                            )),
-                      )
-                    ],
-                  ),
-                )
-              ],
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  InkWell verifyButton(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        final otp = otpController.text;
+        if (otp.length != 6) {
+          showSnackBar(context: context, message: 'Please enter a valid OTP');
+        } else {
+          final connectivity =
+              Provider.of<ConnectivityProvider>(context, listen: false);
+          final auth = Provider.of<AuthProvider>(context, listen: false);
+          if (!connectivity.isDeviceConnected) {
+            networkDialog(context);
+          } else {
+            if (widget.isFromRegistration) {
+              final driverdata = DriverDetails(
+                  fullName: widget.name!, phoneNumber: widget.phoneNo);
+              auth.verifyOTPSignIn(
+                  context: context, otp: otp, driverdata: driverdata);
+            } else {
+              auth.verifyOTPLogIn(context, otp: otp);
+            }
+          }
+        }
+      },
+      child: Container(
+        width: 40.w,
+        height: 6.2.h,
+        decoration: BoxDecoration(
+          color: AppColors.buttonColor, // Greyish color
+          borderRadius: BorderRadius.circular(8), // Rounded corners
+          boxShadow: const [
+            BoxShadow(
+              color: AppColors.buttonSpreadColor, // Shadow color
+              offset: Offset(0, 4), // Offset in X and Y direction
+              blurRadius: 4, // Spread of the shadow
+              spreadRadius: 0.5, // Size of the shadow
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Verify',
+              style: textStyle(
+                  size: 25, color: Colors.white, thickness: FontWeight.bold),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Padding resendOtp(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(left: Adaptive.w(18.8)),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Text('Didn’t received code? ',
+              style: textStyle(
+                size: 17,
+                color: AppColors.textColor,
+              )),
+          InkWell(
+            onTap: () {
+              final auth = Provider.of<AuthProvider>(context, listen: false);
+              auth.resendOTP(phoneNumber: widget.phoneNo, context: context);
+            },
+            child: Text('Resend ',
+                style: textStyle(
+                  size: 17,
+                  color: AppColors.linkColor,
+                )),
+          )
+        ],
       ),
     );
   }
@@ -190,7 +201,7 @@ class ScreenOtpVerification extends StatelessWidget {
           width: Adaptive.w(100),
           child: Text(
             textAlign: TextAlign.center,
-            'Enter the verification code we just sent on your Number $phoneNo',
+            'Enter the verification code we just sent on your Number ${widget.phoneNo}',
             style: textStyle(size: 15, thickness: FontWeight.w600),
           )),
     );
@@ -207,42 +218,42 @@ class ScreenOtpVerification extends StatelessWidget {
     );
   }
 
-  InkWell backButton(BuildContext context) {
-    return InkWell(
-      onTap: () {
-        Navigator.pop(context);
-      },
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Padding(
-            padding: EdgeInsets.fromLTRB(Adaptive.w(5), Adaptive.h(5), 0, 0),
-            child: Container(
-                height: Adaptive.h(6.25),
-                width: Adaptive.w(13.88),
-                decoration: BoxDecoration(
-                    boxShadow: const [
-                      BoxShadow(
-                        color: AppColors.buttonSpreadColor, // Shadow color
-                        offset: Offset(0, 4), // Offset in X and Y direction
-                        blurRadius: 4, // Spread of the shadow
-                        spreadRadius: 0.5, // Size of the shadow
-                      ),
-                    ],
-                    shape: BoxShape.rectangle,
-                    borderRadius: BorderRadius.circular(12),
-                    color: AppColors.buttonColor),
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 8),
-                  child: Icon(
-                    Icons.arrow_back_ios,
-                    size: 24,
-                    color: AppColors.textColor,
-                  ),
-                )),
-          ),
-        ],
-      ),
-    );
-  }
+  // InkWell backButton(BuildContext context) {
+  //   return InkWell(
+  //     onTap: () {
+  //       context.pop();
+  //     },
+  //     child: Row(
+  //       mainAxisAlignment: MainAxisAlignment.start,
+  //       children: [
+  //         Padding(
+  //           padding: EdgeInsets.fromLTRB(Adaptive.w(5), Adaptive.h(5), 0, 0),
+  //           child: Container(
+  //               height: Adaptive.h(6.25),
+  //               width: Adaptive.w(13.88),
+  //               decoration: BoxDecoration(
+  //                   boxShadow: const [
+  //                     BoxShadow(
+  //                       color: AppColors.buttonSpreadColor, // Shadow color
+  //                       offset: Offset(0, 4), // Offset in X and Y direction
+  //                       blurRadius: 4, // Spread of the shadow
+  //                       spreadRadius: 0.5, // Size of the shadow
+  //                     ),
+  //                   ],
+  //                   shape: BoxShape.rectangle,
+  //                   borderRadius: BorderRadius.circular(12),
+  //                   color: AppColors.buttonColor),
+  //               child: Padding(
+  //                 padding: const EdgeInsets.only(left: 8),
+  //                 child: Icon(
+  //                   Icons.arrow_back_ios,
+  //                   size: 24,
+  //                   color: AppColors.textColor,
+  //                 ),
+  //               )),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 }

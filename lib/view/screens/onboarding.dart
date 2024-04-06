@@ -1,13 +1,12 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'dart:developer';
-
+import 'package:drive_ease_driver/view/core/app_router_const.dart';
 import 'package:drive_ease_driver/view/core/colors.dart';
-import 'package:drive_ease_driver/view/screens/screen_register.dart';
 import 'package:drive_ease_driver/view/widgets/widgets.dart';
-import 'package:drive_ease_driver/viewmodel/page_transition.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:responsive_sizer/responsive_sizer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -20,9 +19,12 @@ class ScreenOnBoarding extends StatelessWidget {
       value: SystemUiOverlayStyle.dark.copyWith(
           statusBarIconBrightness: Brightness.light,
           statusBarColor: Colors.transparent),
-      child: Scaffold(
-        body: Stack(
-          children: [image(), onboardingText(), button(context)],
+      child: PopScope(
+        canPop: false,
+        child: Scaffold(
+          body: Stack(
+            children: [image(), onboardingText(), button(context)],
+          ),
         ),
       ),
     );
@@ -38,8 +40,8 @@ class ScreenOnBoarding extends StatelessWidget {
           final SharedPreferences prefs = await SharedPreferences.getInstance();
           prefs.setBool('onBoard', true);
           log('set onBoarding status completed');
-          Navigator.pushReplacement(
-              context, CustomPageTransition(page: ScreenRegister()));
+          GoRouter.of(context)
+              .pushReplacementNamed(MyAppRouterConstants.registerPage);
         },
         child: Container(
           width: 50.w,

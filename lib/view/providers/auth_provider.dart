@@ -5,18 +5,14 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:drive_ease_driver/model/driver_model.dart';
-import 'package:drive_ease_driver/view/screens/driver_data_add.dart';
-import 'package:drive_ease_driver/view/screens/home_page.dart';
-import 'package:drive_ease_driver/view/screens/login.dart';
-import 'package:drive_ease_driver/view/screens/otp_verification.dart';
-import 'package:drive_ease_driver/view/screens/verification_status.dart';
+import 'package:drive_ease_driver/view/core/app_router_const.dart';
 import 'package:drive_ease_driver/view/widgets/widgets.dart';
 import 'package:drive_ease_driver/viewmodel/driver_provider.dart';
-import 'package:drive_ease_driver/viewmodel/page_transition.dart';
 import 'package:drive_ease_driver/viewmodel/verification_provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,12 +20,11 @@ class AuthProvider extends ChangeNotifier {
   String? _uid;
   String? _verificationId;
 
+  String? get uid => _uid;
+
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseStorage _storage = FirebaseStorage.instance;
-
-  String? get uid => _uid;
-  String? get verificationId => _verificationId;
 
   Future<void> verifyPhoneNumber(
       {required BuildContext context,
@@ -42,7 +37,7 @@ class AuthProvider extends ChangeNotifier {
           .where('phone', isEqualTo: phoneNumber)
           .get();
       if (driverSnapshot.docs.isNotEmpty) {
-        Navigator.pop(context);
+        context.pop();
         showSnackBar(
             context: context,
             message:
@@ -55,7 +50,7 @@ class AuthProvider extends ChangeNotifier {
             await _auth.signInWithCredential(phoneAuthCredential);
           },
           verificationFailed: (FirebaseAuthException error) {
-            Navigator.pop(context);
+            context.pop();
             log("Verification Failed: ${error.message}");
             showSnackBar(
                 context: context,
@@ -65,22 +60,21 @@ class AuthProvider extends ChangeNotifier {
           codeSent: (verificationId, forceResendingToken) {
             _verificationId = verificationId;
             notifyListeners();
-            Navigator.pop(context);
-            Navigator.push(
-                context,
-                CustomPageTransition(
-                    page: ScreenOtpVerification(
-                  name: name,
-                  phoneNo: phoneNumber,
-                  isFromRegistration: true,
-                )));
+            context.pop();
+            GoRouter.of(context).pushReplacementNamed(
+                MyAppRouterConstants.otpPage,
+                pathParameters: {
+                  'phoneNo': phoneNumber,
+                  'isFromRegistration': true.toString(),
+                  'name': name
+                });
             log('code sent');
           },
           codeAutoRetrievalTimeout: (verificationId) {},
         );
       }
     } catch (e) {
-      Navigator.pop(context);
+      context.pop();
       showSnackBar(
           context: context,
           message: 'Something Happened! Please Try Again After few Minutes');
@@ -102,12 +96,12 @@ class AuthProvider extends ChangeNotifier {
       User? user = userCredential.user;
       if (user != null) {
         log('verification successful');
+        log('.....saving data to firestore');
         _uid = user.uid;
-        log('saving data to firestore');
         saveDriverInformation(context, driverdata);
       }
     } catch (e) {
-      Navigator.pop(context);
+      context.pop();
       log(e.toString());
       showSnackBar(
           context: context,
@@ -120,11 +114,12 @@ class AuthProvider extends ChangeNotifier {
     if (user != null) {
       final userDoc =
           await _firestore.collection('drivers').doc(user.uid).get();
-      notifyListeners();
       if (userDoc.exists) {
         _uid = user.uid;
-        notifyListeners(); // Return the adminId
+        notifyListeners(); // Return the driverId
       }
+    } else {
+      log('no uid');
     }
   }
 
@@ -132,12 +127,8 @@ class AuthProvider extends ChangeNotifier {
     try {
       loadingDialog(context);
       await _auth.signOut();
-      Navigator.pop(context);
-      Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const ScreenLogin(),
-          ));
+      context.pop();
+      GoRouter.of(context).pushReplacementNamed(MyAppRouterConstants.loginPage);
       log("Sign Out Successful");
     } catch (e) {
       log("Error during sign out: $e");
@@ -165,7 +156,7 @@ class AuthProvider extends ChangeNotifier {
           verificationFailed: (error) {
             //Handle verification failure
             log("Verification Failed: ${error.message}");
-            Navigator.pop(context);
+            context.pop();
             showSnackBar(
                 context: context,
                 message:
@@ -176,13 +167,14 @@ class AuthProvider extends ChangeNotifier {
             log('otp sent');
             _verificationId = verificationId;
             notifyListeners();
-            Navigator.pop(context);
-            Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ScreenOtpVerification(
-                      phoneNo: phoneNumber, isFromRegistration: false),
-                ));
+            context.pop();
+            GoRouter.of(context).pushReplacementNamed(
+                MyAppRouterConstants.otpPage,
+                pathParameters: {
+                  'phoneNo': phoneNumber,
+                  'isFromRegistration': false.toString(),
+                  'name': 'name'
+                });
           },
           codeAutoRetrievalTimeout: (verificationId) {
             // Display an error message to the user or provide an option to resend the code manually.
@@ -190,13 +182,13 @@ class AuthProvider extends ChangeNotifier {
         );
       } else {
         // User does not exist.
-        Navigator.pop(context);
+        context.pop();
         showSnackBar(
             context: context,
             message: 'User does not Exist. Please go to Register Page');
       }
     } catch (e) {
-      Navigator.pop(context);
+      context.pop();
       showSnackBar(
           context: context,
           message: 'Something Happened! Please Try Again After few Minutes');
@@ -221,7 +213,6 @@ class AuthProvider extends ChangeNotifier {
             .collection('drivers')
             .doc(_uid)
             .get();
-        log('enterred here1');
         log(userDataSnapshot.data().toString());
         if (userDataSnapshot.exists) {
           final driverProvider =
@@ -233,39 +224,30 @@ class AuthProvider extends ChangeNotifier {
           prefs.setBool('isSigned', true);
           if (driverProvider.user?.isDocumentSubmitted == true) {
             if (driverProvider.user?.isVerifiedBannerShown == true) {
-              Navigator.pop(context);
-              Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ScreenHome(),
-                  ));
+              context.pop();
+              GoRouter.of(context)
+                  .pushReplacementNamed(MyAppRouterConstants.homePage);
             } else {
-              Navigator.pop(context);
-              Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ScreenVerificationStatus(),
-                  ));
+              context.pop();
+              GoRouter.of(context).pushReplacementNamed(
+                  MyAppRouterConstants.verificationStatusPage);
             }
           } else {
-            Navigator.pop(context);
-            Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ScreenDriverKycAdd(),
-                ));
+            context.pop();
+            GoRouter.of(context)
+                .pushReplacementNamed(MyAppRouterConstants.driverKycAddPage);
           }
         } else {
-          Navigator.pop(context);
+          context.pop();
           showSnackBar(context: context, message: 'User Data Not Found');
         }
       } else {
-        Navigator.pop(context);
+        context.pop();
         showSnackBar(context: context, message: 'OTP Verfication Failed');
         log('OTP Verification failed.');
       }
     } catch (e) {
-      Navigator.pop(context);
+      context.pop();
       showSnackBar(
           context: context,
           message: 'Something Happened! Please Try Again After few Minutes');
@@ -330,17 +312,14 @@ class AuthProvider extends ChangeNotifier {
           .updateDriverInfo(driverdata: driverdata);
       final SharedPreferences prefs = await SharedPreferences.getInstance();
       prefs.setBool('isSigned', true);
-      Navigator.pop(context);
+      context.pop();
       notifyListeners();
-      Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ScreenDriverKycAdd(),
-          ));
+      GoRouter.of(context)
+          .pushReplacementNamed(MyAppRouterConstants.driverKycAddPage);
       // Driver information saved to Firestore successfully.
     } catch (e) {
       // Handle Firestore save error.
-      Navigator.pop(context);
+      context.pop();
       notifyListeners();
       showSnackBar(
           context: context,
@@ -382,9 +361,8 @@ class AuthProvider extends ChangeNotifier {
 
   fetchDatafromFirestore(BuildContext context) async {
     try {
-      getCurrentUserId();
-      final userid = _uid;
-      final snapshot = await _firestore.collection('drivers').doc(userid).get();
+      await getCurrentUserId();
+      final snapshot = await _firestore.collection('drivers').doc(_uid).get();
       if (snapshot.exists) {
         final data = snapshot.data();
         if (data != null) {
@@ -460,15 +438,12 @@ class AuthProvider extends ChangeNotifier {
       await driverDocRef
           .update({'isDocumentSubmitted': true, 'isVerified': false});
 
-      Navigator.pop(context);
-      Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const ScreenVerificationStatus(),
-          ));
+      context.pop();
+      GoRouter.of(context)
+          .pushReplacementNamed(MyAppRouterConstants.verificationStatusPage);
     } catch (e) {
       log(e.toString());
-      Navigator.pop(context);
+      context.pop();
       showSnackBar(
           context: context,
           message: 'Something Happened! Please Try Again After few Minutes ');
@@ -502,17 +477,12 @@ class AuthProvider extends ChangeNotifier {
           .collection('drivers')
           .doc(_uid)
           .update({'isVerifiedBannerShown': true});
-      final SharedPreferences prefs = await SharedPreferences.getInstance();
-      prefs.setBool('isLoggedIn', false);
-      Navigator.pop(context);
-      Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const ScreenLogin(),
-          ),
-          (route) => false);
+      _uid = null;
+      _auth.signOut();
+      context.pop();
+      GoRouter.of(context).pushReplacementNamed(MyAppRouterConstants.loginPage);
     } catch (e) {
-      Navigator.pop(context);
+      context.pop();
       showSnackBar(
           context: context,
           message: 'Something Happened! Please Try Again After few Minutes');
